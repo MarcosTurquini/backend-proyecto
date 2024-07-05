@@ -7,6 +7,10 @@ import __dirname from "./dirname.js";
 import path from "path";
 import fs from "fs";
 import { Server } from "socket.io";
+import { connectDb } from "./utils/mongoose.js";
+
+// mongodb connection
+connectDb();
 
 const products = JSON.parse(fs.readFileSync("./data/products.json", "utf-8"));
 
@@ -19,13 +23,13 @@ const httpServer = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });
 
-// Configuracion de handlebars
+// Config de handlebars
 app.engine(
     "hbs",
     handlebars.engine({
     extname: "hbs",
     defaultLayout: "main",
-    })
+})
 );
 
 app.set("view engine", "hbs");
@@ -33,13 +37,13 @@ app.set("views", `${__dirname}/views`);
 app.use(Express.static(path.resolve(__dirname, "../public")));
 
 app.use("/", viewsRoutes);
-// Fin de la configuración de handlebars
+// Fin de la config de handlebars
 
-// Configuración del servidor WebSocket
+// Config del servidor WebSocket
 
 const io = new Server(httpServer);
 
-// Productos Socket
+// Products Socket
 
 io.on("connection", (socket) => {
     console.log(`Cliente conectado: ${socket.id}`);

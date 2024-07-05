@@ -1,88 +1,91 @@
 import { Router } from "express";
-import fs from "fs"
+import { productDBManager } from "../utils/productDBManager.js";
+import { uploader } from "../utils/multer.js";
 
 const router = Router();
+const ProductService = new productDBManager();
 
-const products = JSON.parse(fs.readFileSync('./data/products.json', 'utf-8'));
+router.get("/", async (req, res) => {
+const result = await ProductService.getAllProducts(req.query);
 
+    res.send({
+    status: "success",
+    payload: result,
+});
+});
 
-router.get('/', (req, res) => {
-    res.json(products);
-})
+router.get("/:pid", async (req, res) => {
+try {
+    const result = await ProductService.getProductByID(req.params.pid);
+    res.send({
+    status: "success",
+    payload: result,
+    });
+} catch (error) {
+    res.status(400).send({
+    status: "error",
+    message: error.message,
+    });
+}
+});
 
+router.post("/", uploader.array("thumbnails", 3), async (req, res) => {
+if (req.files) {
+    req.body.thumbnails = [];
+    req.files.forEach((file) => {
+    req.body.thumbnails.push(file.path);
+    });
+}
 
-router.get('/:pid', async (req, res) => {
-    const { pid } = req.params;
-    const product = await products.find(product => product.id == pid);
+try {
+    const result = await ProductService.createProduct(req.body);
+    res.send({
+    status: "success",
+    payload: result,
+    });
+} catch (error) {
+    res.status(400).send({
+    status: "error",
+    message: error.message,
+    });
+}
+});
 
-    if(!product) {
-        res.status(404).json({ error: 'No se encuentra el producto con el id solicitado' })
-    } else {
-        res.json(product);
-    }
-})
+router.put("/:pid", uploader.array("thumbnails", 3), async (req, res) => {
+if (req.files) {
+    req.body.thumbnails = [];
+    req.files.forEach((file) => {
+    req.body.thumbnails.push(file.filename);
+    });
+}
 
+try {
+    const result = await ProductService.updateProduct(req.params.pid, req.body);
+    res.send({
+    status: "success",
+    payload: result,
+    });
+} catch (error) {
+    res.status(400).send({
+    status: "error",
+    message: error.message,
+    });
+}
+});
 
-router.post('/', (req, res) => {
-    const { title, description, code, price, stock, category } = req.body;
-    const newId = products[products.length - 1].id + 1;
+router.delete("/:pid", async (req, res) => {
+try {
+    const result = await ProductService.deleteProduct(req.params.pid);
+    res.send({
+    status: "success",
+    payload: result,
+    });
+} catch (error) {
+    res.status(400).send({
+    status: "error",
+    message: error.message,
+    });
+}
+});
 
-    if(!title || !description || !code || !price || !stock || !category) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios' })
-    } else {
-            const newProduct = {
-                id: newId,
-                title,
-                description,
-                code,
-                price,
-                status: true,
-                stock,
-                category
-            }
-
-            products.push(newProduct);
-            fs.writeFileSync('./data/products.json', JSON.stringify(products, null, '\t'));
-        }
-        res.json(products); 
-} 
-)
-router.put('/:pid', (req, res) => {
-    const { pid } = req.params;
-    const { title, description, code, price, stock, category } = req.body;
-
-    if(!title || !description || !code || !price || !stock || !category) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios' })
-    } else {
-        const product = products.find(product => product.id == pid);
-
-        if(!product) {
-            res.status(404).json({ error: 'No se encuentra el producto con el id solicitado' })
-        } else {
-            product.title = title;
-            product.description = description;
-            product.code = code;
-            product.price = price;
-            product.stock = stock;
-            product.category = category;
-            fs.writeFileSync('./data/products.json', JSON.stringify(products, null, '\t'));
-            res.json(product);
-        }
-    }
-})
-router.delete('/:pid', async (req, res) => {
-    const { pid } = req.params;
-    const productIndex = products.findIndex(product => product.id == pid)
-    
-    if (pid > products[products.length - 1].id) {
-        res.status(400).json(`No se encuentra el producto con el id: ${pid} solicitado`);
-    } else {
-        try{
-            const product = await products.splice(productIndex, 1)
-            res.json(product);
-        } catch(err) {
-            res.status(400).json(`Ocurrió un error al realizar la petición: ${err}`);
-        };
-    }
-})
-export default router
+export default router;
